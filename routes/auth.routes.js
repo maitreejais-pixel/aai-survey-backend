@@ -59,20 +59,39 @@ router.post("/register", async (req, res) => {
    ===================================================== */
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password required" });
     }
 
+    if (!deviceId) {
+      return res.status(400).json({ message: "Device ID missing" });
+    }
+
     const user = await User.findOne({ email }).populate("airport");
-    if (!user || !user.isActive) {
+    if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Account is inactive" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+    // 🔐 Device binding logic
+    if (!user.deviceId || user.firstLogin === true) {
+      // First login → save deviceId
+      user.deviceId = deviceId;
+      user.firstLogin = false;
+      await user.save();
+    } else if (user.deviceId !== deviceId) {
+      return res.status(403).json({
+        message: "Login blocked: new device detected",
+      });
     }
 
     const token = jwt.sign(
@@ -82,7 +101,7 @@ router.post("/login", async (req, res) => {
         airport: user.airport?._id || null,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "8h" },
     );
 
     res.json({
