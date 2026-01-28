@@ -74,6 +74,12 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!user.airport) {
+      return res
+        .status(403)
+        .json({ message: "User not linked to any airport" });
+    }
+
     if (user.isActive === false) {
       return res.status(403).json({ message: "Account is inactive" });
     }
@@ -98,7 +104,7 @@ router.post("/login", async (req, res) => {
       {
         id: user._id,
         role: user.role,
-        airport: user.airport?._id || null,
+        airport: user.airport._id,
       },
       process.env.JWT_SECRET,
       { expiresIn: "8h" },
