@@ -2,6 +2,15 @@ const express = require("express");
 const router = express.Router();
 const Airport = require("../models/Airport"); // path must be correct
 
+router.get("/", async (req, res) => {
+  try {
+    const airports = await Airport.find();
+    res.json(airports);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.post("/", async (req, res) => {
   try {
     const { code, name, city, latitude, longitude } = req.body;
